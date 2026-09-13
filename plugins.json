@@ -1,0 +1,658 @@
+[
+    {
+        "short":  "dsh-ai-commit",
+        "pkg":  "@qingshanjiluo/dsh-ai-commit",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: heuristic Conventional Commits message suggestion and validation as model tools.",
+        "tools":  [
+                      "ai_commit_suggest",
+                      "ai_commit_validate"
+                  ],
+        "configKeys":  [
+                           "defaultType"
+                       ]
+    },
+    {
+        "short":  "dsh-api-doc-gen",
+        "pkg":  "@qingshanjiluo/dsh-api-doc-gen",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: parse JavaScript/TypeScript source text and turn JSDoc/line comments into an API outline or a Markdown reference",
+        "tools":  [
+                      "api_doc_scan",
+                      "api_doc_preview"
+                  ],
+        "configKeys":  [
+                           "docTitle"
+                       ]
+    },
+    {
+        "short":  "dsh-api-tester",
+        "pkg":  "@qingshanjiluo/dsh-api-tester",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: single HTTP request execution through an injectable fetch seam plus offline API collection plan validation",
+        "tools":  [
+                      "api_request",
+                      "api_collection_plan"
+                  ],
+        "configKeys":  [
+                           "defaultTimeoutMs"
+                       ]
+    },
+    {
+        "short":  "dsh-auto-translate",
+        "pkg":  "@qingshanjiluo/dsh-auto-translate",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: text, batch, and document translation tools with an injectable HTTP backend and a deterministic offline glossary fallback.",
+        "tools":  [
+                      "translate_text",
+                      "translate_batch",
+                      "translate_file"
+                  ],
+        "configKeys":  [
+                           "endpoint"
+                       ]
+    },
+    {
+        "short":  "dsh-benchmark",
+        "pkg":  "@qingshanjiluo/dsh-benchmark",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic statistics, comparison, and Markdown reports over supplied benchmark sample data.",
+        "tools":  [
+                      "bench_stats",
+                      "bench_compare",
+                      "bench_report"
+                  ],
+        "configKeys":  [
+                           "precision"
+                       ]
+    },
+    {
+        "short":  "dsh-blog-engine",
+        "pkg":  "@qingshanjiluo/dsh-blog-engine",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline static-site blog tools — author Markdown posts with YAML frontmatter, parse a post index, and build a minimal HTML site as an in-memory file map.",
+        "tools":  [
+                      "blog_new",
+                      "blog_list",
+                      "blog_build"
+                  ],
+        "configKeys":  [
+                           "siteTitle"
+                       ]
+    },
+    {
+        "short":  "dsh-changelog-gen",
+        "pkg":  "@qingshanjiluo/dsh-changelog-gen",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: format supplied conventional commits into CHANGELOG sections as model tools.",
+        "tools":  [
+                      "changelog_group",
+                      "changelog_generate"
+                  ],
+        "configKeys":  [
+                           "headingLevel"
+                       ]
+    },
+    {
+        "short":  "dsh-code-review-ai",
+        "pkg":  "@qingshanjiluo/dsh-code-review-ai",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic static heuristics that review supplied code text and unified diffs.",
+        "tools":  [
+                      "review_text",
+                      "review_diff"
+                  ],
+        "configKeys":  [
+                           "maxBlockLines"
+                       ]
+    },
+    {
+        "short":  "dsh-color-palette",
+        "pkg":  "@qingshanjiluo/dsh-color-palette",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure color-space conversion, harmony palettes, WCAG contrast ratios, and lightness ramps as model tools.",
+        "tools":  [
+                      "color_convert",
+                      "color_harmony",
+                      "color_contrast",
+                      "color_shades"
+                  ],
+        "configKeys":  [
+                           "maxShades"
+                       ]
+    },
+    {
+        "short":  "dsh-commit-lint",
+        "pkg":  "@qingshanjiluo/dsh-commit-lint",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: Conventional Commits message linting and staged-file review as model tools.",
+        "tools":  [
+                      "lint_commit",
+                      "lint_staged"
+                  ],
+        "configKeys":  [
+                           "maxSubjectLength"
+                       ]
+    },
+    {
+        "short":  "dsh-context-manager",
+        "pkg":  "@qingshanjiluo/dsh-context-manager",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic transcript stats, keyword search, model-free compaction, and recent-task extraction as model tools.",
+        "tools":  [
+                      "ctx_stats",
+                      "ctx_search",
+                      "ctx_compact",
+                      "ctx_recentTasks"
+                  ],
+        "configKeys":  [
+                           "k"
+                       ]
+    },
+    {
+        "short":  "dsh-coverage-tracker",
+        "pkg":  "@qingshanjiluo/dsh-coverage-tracker",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: parse, check, and heatmap LCOV coverage reports as pure model tools.",
+        "tools":  [
+                      "coverage_parse",
+                      "coverage_check",
+                      "coverage_heatmap"
+                  ],
+        "configKeys":  [
+                           "defaultMinLines"
+                       ]
+    },
+    {
+        "short":  "dsh-cron-manager",
+        "pkg":  "@qingshanjiluo/dsh-cron-manager",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure cron expression parsing, English description, and next fire-time computation as model tools.",
+        "tools":  [
+                      "cron_parse",
+                      "cron_describe",
+                      "cron_next"
+                  ],
+        "configKeys":  [
+                           "defaultZone"
+                       ]
+    },
+    {
+        "short":  "dsh-data-profiling",
+        "pkg":  "@qingshanjiluo/dsh-data-profiling",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic CSV/JSON column profiling and markdown data-quality reports.",
+        "tools":  [
+                      "profile_csv",
+                      "profile_json",
+                      "profile_report"
+                  ],
+        "configKeys":  [
+                           "sampleSize"
+                       ]
+    },
+    {
+        "short":  "dsh-db-seed",
+        "pkg":  "@qingshanjiluo/dsh-db-seed",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic seeded SQL INSERT generation from CREATE TABLE DDL and fake row previews.",
+        "tools":  [
+                      "seed_from_schema",
+                      "seed_preview"
+                  ],
+        "configKeys":  [
+
+                       ]
+    },
+    {
+        "short":  "dsh-db-visualizer",
+        "pkg":  "@qingshanjiluo/dsh-db-visualizer",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline SQL DDL parsing, Mermaid ER diagrams, and schema hygiene findings as model tools.",
+        "tools":  [
+                      "db_parse_schema",
+                      "db_er_mermaid",
+                      "db_analyze"
+                  ],
+        "configKeys":  [
+                           "includeComments"
+                       ]
+    },
+    {
+        "short":  "dsh-dependency-graph",
+        "pkg":  "@qingshanjiluo/dsh-dependency-graph",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: circular-dependency, orphan, and change-impact analysis over caller-supplied import graphs as model tools.",
+        "tools":  [
+                      "dep_circular",
+                      "dep_orphans",
+                      "dep_impact"
+                  ],
+        "configKeys":  [
+                           "maxCycles"
+                       ]
+    },
+    {
+        "short":  "dsh-deploy-manager",
+        "pkg":  "@qingshanjiluo/dsh-deploy-manager",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline deploy planning, deploy-config generation, and YAML/JSON config validation as model tools.",
+        "tools":  [
+                      "deploy_plan",
+                      "deploy_generate_config",
+                      "deploy_validate_config"
+                  ],
+        "configKeys":  [
+                           "provider"
+                       ]
+    },
+    {
+        "short":  "dsh-docker",
+        "pkg":  "@qingshanjiluo/dsh-docker",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: Docker container inspection and Compose-file validation as model tools, behind an injectable command seam.",
+        "tools":  [
+                      "docker_ps",
+                      "docker_logs",
+                      "docker_compose_config"
+                  ],
+        "configKeys":  [
+                           "dockerPath"
+                       ]
+    },
+    {
+        "short":  "dsh-docstring-gen",
+        "pkg":  "@qingshanjiluo/dsh-docstring-gen",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: regex-based docstring scaffolds (JSDoc, Python docstring, reStructuredText) and undocumented-symbol scans for source text.",
+        "tools":  [
+                      "doc_scaffold",
+                      "doc_scan"
+                  ],
+        "configKeys":  [
+                           "defaultStyle"
+                       ]
+    },
+    {
+        "short":  "dsh-env-switcher",
+        "pkg":  "@qingshanjiluo/dsh-env-switcher",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure .env text tools - parse, diff, validate against a schema, and serialize back to file content.",
+        "tools":  [
+                      "env_parse",
+                      "env_diff",
+                      "env_validate",
+                      "env_serialize"
+                  ],
+        "configKeys":  [
+                           "allowExportPrefix"
+                       ]
+    },
+    {
+        "short":  "dsh-github-actions",
+        "pkg":  "@qingshanjiluo/dsh-github-actions",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline GitHub Actions workflow YAML validation, outlining, and matrix expansion as model tools.",
+        "tools":  [
+                      "gh_workflow_validate",
+                      "gh_workflow_outline",
+                      "gh_matrix_expand"
+                  ],
+        "configKeys":  [
+                           "maxCombos"
+                       ]
+    },
+    {
+        "short":  "dsh-gitignore-gen",
+        "pkg":  "@qingshanjiluo/dsh-gitignore-gen",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure .gitignore generation from embedded templates and path-based template detection.",
+        "tools":  [
+                      "gitignore_generate",
+                      "gitignore_detect"
+                  ],
+        "configKeys":  [
+                           "header"
+                       ]
+    },
+    {
+        "short":  "dsh-git-workflow",
+        "pkg":  "@qingshanjiluo/dsh-git-workflow",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: validated git branch command planning behind an injectable runner, plus pure parsers for conflicts and git log output.",
+        "tools":  [
+                      "git_branch_plan",
+                      "git_conflicts_parse",
+                      "git_log_format"
+                  ],
+        "configKeys":  [
+                           "gitPath"
+                       ]
+    },
+    {
+        "short":  "dsh-i18n-manager",
+        "pkg":  "@qingshanjiluo/dsh-i18n-manager",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure i18n locale-file scanning, missing-key diffing, and coverage reporting as model tools.",
+        "tools":  [
+                      "i18n_scan",
+                      "i18n_missing",
+                      "i18n_report"
+                  ],
+        "configKeys":  [
+                           "keySeparator"
+                       ]
+    },
+    {
+        "short":  "dsh-json-yaml-converter",
+        "pkg":  "@qingshanjiluo/dsh-json-yaml-converter",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: JSON \u003c-\u003e YAML conversion, JSON validation, and prettifying as model tools.",
+        "tools":  [
+                      "convert_format",
+                      "validate_json",
+                      "prettify"
+                  ],
+        "configKeys":  [
+                           "defaultIndent"
+                       ]
+    },
+    {
+        "short":  "dsh-license-checker",
+        "pkg":  "@qingshanjiluo/dsh-license-checker",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure SPDX license policy checks, classification, and compatibility heuristics as model tools.",
+        "tools":  [
+                      "license_check",
+                      "license_classify",
+                      "license_compat"
+                  ],
+        "configKeys":  [
+                           "allow"
+                       ]
+    },
+    {
+        "short":  "dsh-lint-config",
+        "pkg":  "@qingshanjiluo/dsh-lint-config",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: generate ESLint flat-config or Biome config text from style/TS/framework choices, and detect which linters apply from a package.json string.",
+        "tools":  [
+                      "lint_generate",
+                      "lint_checkPackage"
+                  ],
+        "configKeys":  [
+                           "defaultLinter"
+                       ]
+    },
+    {
+        "short":  "dsh-log-viewer",
+        "pkg":  "@qingshanjiluo/dsh-log-viewer",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure log-text analytics (level stats, search, severity filter) as model tools.",
+        "tools":  [
+                      "log_stats",
+                      "log_search",
+                      "log_filter"
+                  ],
+        "configKeys":  [
+                           "defaultLimit"
+                       ]
+    },
+    {
+        "short":  "dsh-markdown-preview",
+        "pkg":  "@qingshanjiluo/dsh-markdown-preview",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: markdown heading outline, style linting, and fenced-code extraction as model tools.",
+        "tools":  [
+                      "md_outline",
+                      "md_lint",
+                      "md_extract_code"
+                  ],
+        "configKeys":  [
+                           "maxLineLength"
+                       ]
+    },
+    {
+        "short":  "dsh-mock-server",
+        "pkg":  "@qingshanjiluo/dsh-mock-server",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline OpenAPI-to-mock generators that emit an Express/Koa stub source, plan a route table, and validate a spec — no listener, no network.",
+        "tools":  [
+                      "mock_fromOpenApi",
+                      "mock_routes",
+                      "mock_validateSpec"
+                  ],
+        "configKeys":  [
+                           "defaultFramework"
+                       ]
+    },
+    {
+        "short":  "dsh-model-router",
+        "pkg":  "@qingshanjiluo/dsh-model-router",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic model recommendation, comparison, and cost estimation over a built-in static catalog.",
+        "tools":  [
+                      "model_recommend",
+                      "model_compare",
+                      "model_cost"
+                  ],
+        "configKeys":  [
+                           "maxResults"
+                       ]
+    },
+    {
+        "short":  "dsh-pomodoro",
+        "pkg":  "@qingshanjiluo/dsh-pomodoro",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: an in-memory Pomodoro focus timer with start/status/stop/stats tools.",
+        "tools":  [
+                      "pomodoro_start",
+                      "pomodoro_status",
+                      "pomodoro_stop",
+                      "pomodoro_stats"
+                  ],
+        "configKeys":  [
+                           "workMin"
+                       ]
+    },
+    {
+        "short":  "dsh-project-scaffold",
+        "pkg":  "@qingshanjiluo/dsh-project-scaffold",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline project scaffolding — list templates, plan a file map, preview a rendered tree, and optionally write it to disk.",
+        "tools":  [
+                      "scaffold_list",
+                      "scaffold_plan",
+                      "scaffold_preview",
+                      "scaffold_write"
+                  ],
+        "configKeys":  [
+                           "maxFiles",
+                           "greeting"
+                       ]
+    },
+    {
+        "short":  "dsh-prometheus",
+        "pkg":  "@qingshanjiluo/dsh-prometheus",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: query a Prometheus HTTP API (instant/range/targets/rules/alerts) through an injectable fetch seam",
+        "tools":  [
+                      "prom_query",
+                      "prom_range",
+                      "prom_targets",
+                      "prom_rules",
+                      "prom_alerts"
+                  ],
+        "configKeys":  [
+                           "url"
+                       ]
+    },
+    {
+        "short":  "dsh-regex-playground",
+        "pkg":  "@qingshanjiluo/dsh-regex-playground",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure regex testing, token-by-token explanation, and a curated pattern library as model tools.",
+        "tools":  [
+                      "regex_test",
+                      "regex_explain",
+                      "regex_common"
+                  ],
+        "configKeys":  [
+                           "maxSubjectLength"
+                       ]
+    },
+    {
+        "short":  "dsh-report-gen",
+        "pkg":  "@qingshanjiluo/dsh-report-gen",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: deterministic JSON/CSV/Markdown to Markdown report tools.",
+        "tools":  [
+                      "report_from_json",
+                      "report_from_csv",
+                      "report_markdown"
+                  ],
+        "configKeys":  [
+                           "defaultTitle"
+                       ]
+    },
+    {
+        "short":  "dsh-security-audit",
+        "pkg":  "@qingshanjiluo/dsh-security-audit",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline secret-signature scan over supplied file contents plus heuristic risky-dependency audit of a package.json body.",
+        "tools":  [
+                      "scan_secrets",
+                      "audit_package"
+                  ],
+        "configKeys":  [
+                           "maxBytes"
+                       ]
+    },
+    {
+        "short":  "dsh-seo-tool",
+        "pkg":  "@qingshanjiluo/dsh-seo-tool",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure HTML on-page SEO analysis, head-metadata extraction, and sitemap.xml generation as model tools.",
+        "tools":  [
+                      "seo_analyze",
+                      "seo_meta",
+                      "seo_sitemap"
+                  ],
+        "configKeys":  [
+                           "siteUrl"
+                       ]
+    },
+    {
+        "short":  "dsh-sql-formatter",
+        "pkg":  "@qingshanjiluo/dsh-sql-formatter",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: pure-SQL formatter, static query analyzer, and index suggestions.",
+        "tools":  [
+                      "sql_format",
+                      "sql_analyze",
+                      "sql_index_suggestions"
+                  ],
+        "configKeys":  [
+                           "dialect"
+                       ]
+    },
+    {
+        "short":  "dsh-status-page",
+        "pkg":  "@qingshanjiluo/dsh-status-page",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline status-page HTML generation and injectable-transport service probing as model tools.",
+        "tools":  [
+                      "status_generate",
+                      "status_check"
+                  ],
+        "configKeys":  [
+                           "title"
+                       ]
+    },
+    {
+        "short":  "dsh-subagent-mode",
+        "pkg":  "@qingshanjiluo/dsh-subagent-mode",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: built-in specialist sub-agent roles plus a deterministic step decomposer, as pure model tools.",
+        "tools":  [
+                      "role_list",
+                      "role_prompt",
+                      "plan_steps"
+                  ],
+        "configKeys":  [
+                           "maxSteps"
+                       ]
+    },
+    {
+        "short":  "dsh-test-generator",
+        "pkg":  "@qingshanjiluo/dsh-test-generator",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: scan exported symbols in source text and generate vitest/jest/unittest test scaffolds as plain strings.",
+        "tools":  [
+                      "scan_testable",
+                      "generate_tests",
+                      "generate_from_spec"
+                  ],
+        "configKeys":  [
+                           "defaultFramework"
+                       ]
+    },
+    {
+        "short":  "dsh-test-runner",
+        "pkg":  "@qingshanjiluo/dsh-test-runner",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: detect a project\u0027s test framework, build a validated run command, and parse runner output, behind an injectable command seam.",
+        "tools":  [
+                      "detect_test_framework",
+                      "test_parseOutput",
+                      "test_run"
+                  ],
+        "configKeys":  [
+                           "jsRunner"
+                       ]
+    },
+    {
+        "short":  "dsh-time-tracker",
+        "pkg":  "@qingshanjiluo/dsh-time-tracker",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: start/stop timers, backfill work logs, and report tracked time behind an injectable clock and storage seam.",
+        "tools":  [
+                      "timer_start",
+                      "timer_stop",
+                      "timer_status",
+                      "timer_log",
+                      "timer_report"
+                  ],
+        "configKeys":  [
+                           "storagePath"
+                       ]
+    },
+    {
+        "short":  "dsh-vision-ocr",
+        "pkg":  "@qingshanjiluo/dsh-vision-ocr",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: give text-only models vision via injectable CLI OCR (tesseract) and optional YOLO-style object detection.",
+        "tools":  [
+                      "ocr_image",
+                      "detect_objects",
+                      "describe_scene"
+                  ],
+        "configKeys":  [
+                           "ocrCommand"
+                       ]
+    },
+    {
+        "short":  "dsh-webhook-tester",
+        "pkg":  "@qingshanjiluo/dsh-webhook-tester",
+        "version":  "0.1.0",
+        "description":  "DeepSeek Harness plugin: offline webhook sample generation, HMAC-SHA256 signature verification, and raw HTTP request parsing as model tools.",
+        "tools":  [
+                      "webhook_generate_sample",
+                      "webhook_verify_signature",
+                      "webhook_parse_request"
+                  ],
+        "configKeys":  [
+                           "sampleUrl"
+                       ]
+    }
+]
