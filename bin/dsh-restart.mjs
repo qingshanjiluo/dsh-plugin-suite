@@ -528,19 +528,48 @@ function scanForBootFailure(text) {
   return hits
 }
 
+/**
+ * Read the optional `restart.config.json` beside the suite.
+ *
+ * Needed because a .bat launcher cannot carry a non-ASCII path safely (cmd.exe
+ * parses batch files in the OEM code page), so such paths belong in a UTF-8 JSON
+ * file that Node reads instead.
+ */
+function readConfig() {
+  const candidates = [
+    process.env.DSH_RESTART_CONFIG,
+    join(SUITE_ROOT, 'restart.config.json'),
+    join(HERE, '..', 'restart.config.json'),
+  ].filter(Boolean)
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue
+    try {
+      return JSON.parse(readFileSync(candidate, 'utf8'))
+    } catch (error) {
+      say(`! 配置文件无法解析：${candidate} — ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  return {}
+}
+
 /* ------------------------------------------------------------------- main ---- */
 
 async function main() {
   const flags = parseArgs(process.argv.slice(2))
-  const dshRoot = process.env.DSH_ROOT && process.env.DSH_ROOT.trim() !== ''
-    ? process.env.DSH_ROOT.trim()
-    : 'G:\\dsh'
-  const profile = process.env.DSH_PROFILE && process.env.DSH_PROFILE.trim() !== ''
-    ? process.env.DSH_PROFILE.trim()
-    : 'web'
-  const srcRoot = process.env.DSH_PLUGIN_SRC && process.env.DSH_PLUGIN_SRC.trim() !== ''
-    ? process.env.DSH_PLUGIN_SRC.trim()
-    : resolve(SUITE_ROOT, '..')
+  const config = readConfig()
+  const dshRoot = process.env.DSH_ROOT?.trim()
+    || config.dshRoot
+    || 'G:\\dsh'
+  const profile = process.env.DSH_PROFILE?.trim()
+    || config.profile
+    || 'web'
+  // Where the dsh-* plugin checkouts live. Derived from the suite location when
+  // the suite sits beside them, but that assumption breaks as soon as the bin
+  // scripts are copied to a shorter path — so explicit config/env always wins,
+  // and a missing directory is reported instead of silently scanning elsewhere.
+  const srcRoot = process.env.DSH_PLUGIN_SRC?.trim()
+    || config.pluginSrc
+    || resolve(SUITE_ROOT, '..')
 
   const logDir = join(SUITE_ROOT, 'logs')
   mkdirSync(logDir, { recursive: true })
@@ -555,6 +584,15 @@ async function main() {
 
   if (!existsSync(dshRoot)) {
     say(`! 找不到 DSH 检出目录：${dshRoot}`)
+    process.exitCode = 1
+    return
+  }
+
+  // A wrong source root would otherwise look like "every plugin is missing".
+  if (flags.ensure && !existsSync(join(srcRoot, 'dsh-scheduler'))) {
+    say(`! 插件源目录里找不到 dsh-scheduler：${srcRoot}`)
+    say('  请设置 DSH_PLUGIN_SRC 指向含 dsh-* 子目录的仓库根，例如：')
+    say('    set DSH_PLUGIN_SRC=<含 dsh-* 的目录>')
     process.exitCode = 1
     return
   }
