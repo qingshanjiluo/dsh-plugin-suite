@@ -195,7 +195,16 @@ function batchInstall(chosen, opts, dir) {
   }
   const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { dependencies: {} }
   pkg.dependencies = pkg.dependencies || {}
-  for (const p of chosen) pkg.dependencies[p.pkg] = specFor(p, opts.from, opts.src)
+  // dsh 只加载 dsh.profile.bundles 里列出的插件（或全部 deps，取决于版本）；为与
+  // `dsh plugin add` 行为一致，batch 必须同时把包名登记进 bundles，否则“装了却不加载”。
+  pkg.dsh = pkg.dsh || {}
+  pkg.dsh.profile = pkg.dsh.profile || {}
+  if (!Array.isArray(pkg.dsh.profile.bundles)) pkg.dsh.profile.bundles = []
+  const bundles = pkg.dsh.profile.bundles
+  for (const p of chosen) {
+    pkg.dependencies[p.pkg] = specFor(p, opts.from, opts.src)
+    if (!bundles.includes(p.pkg)) bundles.push(p.pkg)
+  }
   if (opts.dryRun) {
     process.stdout.write(`(dry-run) 将向 ${pkgPath} 写入 ${chosen.length} 个依赖并执行一次 pnpm install：\n`)
     for (const p of chosen) process.stdout.write(`  ${p.pkg}: ${pkg.dependencies[p.pkg]}\n`)
@@ -220,6 +229,10 @@ function cmdUninstall(plugins, opts) {
   process.stdout.write(`卸载 ${present.length} 个（从 profile "${opts.profile}"）\n`)
   if (opts.dryRun) { for (const p of present) process.stdout.write(`  (dry-run) 移除 ${p.pkg}\n`); return }
   for (const p of present) delete pkg.dependencies[p.pkg]
+  if (pkg.dsh && pkg.dsh.profile && Array.isArray(pkg.dsh.profile.bundles)) {
+    const gone = new Set(present.map((p) => p.pkg))
+    pkg.dsh.profile.bundles = pkg.dsh.profile.bundles.filter((b) => !gone.has(b))
+  }
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
   const r = run('npx', ['-y', 'pnpm@11', 'install'], { cwd: dir, verbose: opts.verbose })
   if (r.code !== 0) { process.stdout.write('pnpm install 返回非零：' + (r.stderr || r.stdout).split('\n').slice(-3).join('\n') + '\n'); return }

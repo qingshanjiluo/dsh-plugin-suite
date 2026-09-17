@@ -63,6 +63,45 @@ dsh-suite uninstall --profile web
 - `--from github`：pnpm `github:qingshanjiluo/<名>`。**注意**：本合集各仓库的 `lib/` 被 `.gitignore` 排除、未进 git，而 dsh 运行需要 `lib/index.js`；除非为各包加 `"prepare": "npm run build"` 自举，否则从 github 安装会缺产物。发布 npm 后请优先用 `--from npm`。
 - `-p/--profile` 目标 profile 名（默认 `web`）；`-n/--dry-run` 只打印；`-v/--verbose` 打印将执行的命令。
 
+## 一键重启（自动构建 + 失败降级 + 日志）
+
+`bin/dsh-restart.mjs` 把"确认插件 → 冲突检查 → 构建 → 启动"串成一条命令，全程输出写入
+`logs/restart-<时间戳>.log`。Windows 上双击桌面的 **DSH 重启**，或直接跑 `G:\dsh\dsh-restart.bat`。
+
+```bash
+node bin/dsh-restart.mjs                 # 全套：启用插件 → 冲突检查 → 构建 → 启动
+node bin/dsh-restart.mjs --no-build      # 跳过构建（直接用已有产物）
+node bin/dsh-restart.mjs --port 3081     # 换端口启动
+node bin/dsh-restart.mjs --dry-run       # 只打印计划，零改动
+node bin/dsh-restart.mjs --via dsh       # 用 dsh plugin add 而非直接写 profile
+```
+
+**失败降级**：启动起不来的话，脚本会读日志匹配错误特征（duplicate tool / Cannot find module /
+SyntaxError…），自动按 `全部 → 12 → 6 → 2 → 仅官方 core` 的阶梯缩小插件集重试，每档都会先用
+`dsh-check` 复查。
+
+**两条重要的边界**：
+
+- **端口被占用时不会降级**。若 3080 已被别的进程监听（比如你正在用的实例），脚本会明确报告
+  `pid`，并提示"直接用现有实例 或 自行停掉它 或 换端口"后退出（exit 2）——因为这不是插件问题，
+  缩小插件集只会白改 profile。脚本**从不杀进程**。
+- **本地插件走离线路径**。默认策略直接写 profile 的依赖表（`link:` 指向本地目录，正斜杠），
+  再用 `pnpm install --offline`；这样每加一个插件都**不必访问 registry**。若机器网络拒绝
+  `registry.npmjs.org`，`dsh plugin add` 会每个包卡几分钟，而本地路径是秒级完成的。
+
+`bin/dsh-check.mjs` 负责启动前静态查冲突，覆盖两类**启动级**失败：
+
+```bash
+node bin/dsh-check.mjs --profile web    # 查当前 profile 已启用集
+node bin/dsh-check.mjs --all            # 查全部插件若同时启用
+```
+
+- **工具名冲突**：跨插件重复 / 插件内重复 / 撞 DSH 内置保留名。
+- **loader entry id 冲突**：两个插件的 `cordis.patch.yml` 用同一个 `id`，或占用了官方层的
+  id，会直接报 `duplicate loader entry id` 起不来。例如本合集早期的 `dsh-security-audit`
+  用了 `id: security-audit`，与官方 `@deepseek-ai/dsh-security-audit` 撞名 —— 现已改为
+  `qsj-security-audit`。
+
 ## 发布到 npm（两步）
 
 `@qingshanjiluo/dsh-*` 目前是**本地目录 / GitHub 仓库**，尚未发布 npm。要用 `--from npm` 需先发布。发布需你本人的 npmjs 凭据（我无法代登录）：

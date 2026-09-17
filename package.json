@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "description": "One-click install/configure/uninstall CLI for the whole @qingshanjiluo/dsh-* plugin collection against a DeepSeek Harness profile",
   "type": "module",
-  "bin": { "dsh-suite": "./bin/dsh-suite.mjs" },
-  "files": ["bin/dsh-suite.mjs", "plugins.json", "README.md"],
+  "bin": { "dsh-suite": "./bin/dsh-suite.mjs", "dsh-restart": "./bin/dsh-restart.mjs" },
+  "files": ["bin/dsh-suite.mjs", "bin/dsh-check.mjs", "bin/dsh-restart.mjs", "plugins.json", "README.md"],
   "scripts": {
     "suite": "node bin/dsh-suite.mjs",
     "list": "node bin/dsh-suite.mjs list",
+    "check": "node bin/dsh-check.mjs --profile web",
+    "restart": "node bin/dsh-restart.mjs",
+    "restart:dry": "node bin/dsh-restart.mjs --dry-run",
     "publish-check": "node scripts/publish-all.mjs --pack-only",
     "publish": "node scripts/publish-all.mjs --yes",
-    "test": "node bin/dsh-suite.mjs list --json && node -e \"import('node:fs').then(({readFileSync})=>{const a=JSON.parse(readFileSync('plugins.json','utf8'));if(!Array.isArray(a)||a.length<47)throw new Error('plugins.json too small');if(!a.every(x=>x.pkg.startsWith('@qingshanjiluo/')))throw new Error('bad pkg name');console.log('smoke ok: '+a.length+' plugins, all scoped')})\""
+    "test": "node scripts/restart-logic.test.mjs && node bin/dsh-suite.mjs list --json && node -e \"import('node:fs').then(({readFileSync})=>{const a=JSON.parse(readFileSync('plugins.json','utf8'));if(!Array.isArray(a)||a.length<47)throw new Error('plugins.json too small');if(!a.every(x=>x.pkg.startsWith('@qingshanjiluo/')))throw new Error('bad pkg name');console.log('smoke ok: '+a.length+' plugins, all scoped')})\""
   },
   "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "installer", "cli"],
   "author": "qingshanjiluo",
