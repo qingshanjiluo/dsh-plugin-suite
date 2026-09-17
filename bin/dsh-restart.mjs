@@ -14,7 +14,7 @@
  *   node bin/dsh-restart.mjs                 # build + restart, full plugin set
  *   node bin/dsh-restart.mjs --no-build      # skip the build step
  *   node bin/dsh-restart.mjs --no-ensure     # leave the plugin set untouched
- *   node bin/dsh-restart.mjs --port 3080 --timeout 180
+ *   node bin/dsh-restart.mjs --port 3080 --timeout 180   # 端口仅用于就绪探测
  *   node bin/dsh-restart.mjs --dry-run       # print the plan, change nothing
  *
  * @module dsh-restart
@@ -22,7 +22,7 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { createServer } from 'node:net'
+import { Socket } from 'node:net'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -152,13 +152,27 @@ function run(command, args, options = {}) {
   })
 }
 
-/** True when a TCP port is accepting connections. */
-function portOpen(port, host = '127.0.0.1') {
+/**
+ * True when something is listening on the port.
+ *
+ * This must *connect* to the port, not bind it: a bind succeeds precisely when
+ * the port is free, which would report a dead server as healthy.
+ */
+function portOpen(port, host = '127.0.0.1', timeoutMs = 1500) {
   return new Promise(resolvePromise => {
-    const socket = createServer()
-    socket.once('error', () => resolvePromise(false))
-    socket.once('listening', () => socket.close(() => resolvePromise(true)))
-    socket.listen(port, host)
+    const socket = new Socket()
+    let settled = false
+    const finish = value => {
+      if (settled) return
+      settled = true
+      socket.destroy()
+      resolvePromise(value)
+    }
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => finish(true))
+    socket.once('timeout', () => finish(false))
+    socket.once('error', () => finish(false))
+    socket.connect(port, host)
   })
 }
 
@@ -604,7 +618,7 @@ async function main() {
       say('这不是插件冲突，因此不会降级插件集。请二选一：')
       say(`  1) 直接使用已在运行的实例：http://127.0.0.1:${flags.port}/`)
       say(`  2) 先自行停掉 pid ${owner}，再重新运行本脚本`)
-      say(`  （也可以换端口：node bin/dsh-restart.mjs --port 3081）`)
+      say('  （监听端口由 profile 的 webserver 配置决定，本脚本无法代你改端口）')
       say(`日志：${logFile}`)
       process.exitCode = 2
       return
@@ -617,6 +631,9 @@ async function main() {
       }
     }
 
+    // The listen port belongs to the profile's webserver config, not the
+    // environment, so it cannot be redirected from here. `--port` therefore
+    // only selects which socket the readiness check watches.
     const child = spawn('pnpm', ['dsh', 'web'], {
       cwd: dshRoot,
       shell: process.platform === 'win32',

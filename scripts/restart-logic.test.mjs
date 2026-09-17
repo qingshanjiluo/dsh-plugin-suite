@@ -28,7 +28,11 @@ assert.match(restartSource, /function portOwner\(/, 'port owner lookup present')
 assert.match(restartSource, /这不是插件冲突，因此不会降级插件集/, 'busy port refuses to degrade')
 // The local enable path avoids the registry entirely.
 assert.match(restartSource, /'install', '--offline'/, 'offline install attempted first')
-assert.match(restartSource, /link:\$\{target\.replace\(\/\\\\\/g, '\/'\)\}/, 'link spec uses forward slashes')
+assert.match(restartSource, /replace\(\/\\\\\/g, '\/'\)/, 'link spec uses forward slashes')
+// Readiness must CONNECT (a bind would succeed exactly when the port is free,
+// reporting a dead server as healthy).
+assert.match(restartSource, /new Socket\(\)/, 'readiness probe dials the port')
+assert.doesNotMatch(restartSource, /socket\.listen\(/, 'readiness probe never binds the port')
 
 // Loader entry ids must not collide with official layers.
 const checkSource = readFileSync(new URL('../bin/dsh-check.mjs', import.meta.url), 'utf8')
