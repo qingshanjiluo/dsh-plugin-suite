@@ -23,9 +23,18 @@ assert.match(restartSource, /const ladder = \[WANTED\.length, 12, 6, 2, 0\]/, 'f
 assert.match(restartSource, /'duplicate tool'/, 'duplicate-tool signature present')
 assert.match(restartSource, /'ERR_MODULE_NOT_FOUND'/, 'module-not-found signature present')
 assert.match(restartSource, /appendFileSync\(logFile, text, 'utf8'\)/, 'log written as utf8')
-// A busy port must not be mistaken for a plugin failure.
+// A busy port must not be mistaken for a plugin failure: the script either
+// takes the port over from a previous DSH instance or refuses, but it must
+// never shrink the plugin set because of it.
 assert.match(restartSource, /function portOwner\(/, 'port owner lookup present')
-assert.match(restartSource, /这不是插件冲突，因此不会降级插件集/, 'busy port refuses to degrade')
+assert.match(restartSource, /function isDshProcess\(/, 'occupant identity check present')
+assert.match(restartSource, /端口仍被 pid \$\{stillHeld\} 占用，停止降级/, 'busy port stops the ladder')
+assert.doesNotMatch(restartSource, /这是插件冲突/, 'busy port is never treated as a plugin conflict')
+// The authenticated URL is the only way in: the bare origin answers 401, which
+// the UI renders as an empty history that cannot start a conversation.
+assert.match(restartSource, /function waitForTokenUrl\(/, 'token URL recovery present')
+assert.match(restartSource, /\/\\\?token=\[A-Za-z0-9_-\]\+/, 'token URL pattern present')
+assert.match(restartSource, /last-url\.txt/, 'authenticated URL is persisted')
 // The local enable path avoids the registry entirely.
 assert.match(restartSource, /'install', '--offline'/, 'offline install attempted first')
 assert.match(restartSource, /replace\(\/\\\\\/g, '\/'\)/, 'link spec uses forward slashes')

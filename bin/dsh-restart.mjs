@@ -12,16 +12,21 @@
  *
  * Usage:
  *   node bin/dsh-restart.mjs                 # build + restart, full plugin set
+ *   node bin/dsh-restart.mjs --fast          # start the EXISTING build, no rebuild
  *   node bin/dsh-restart.mjs --no-build      # skip the build step
  *   node bin/dsh-restart.mjs --no-ensure     # leave the plugin set untouched
  *   node bin/dsh-restart.mjs --port 3080 --timeout 180   # 端口仅用于就绪探测
  *   node bin/dsh-restart.mjs --dry-run       # print the plan, change nothing
  *
+ * `--fast` is the everyday launcher: it assumes the build and the plugin set are
+ * already correct and only (re)starts the server, taking over the port from a
+ * previous instance. It never builds and never rewrites the profile.
+ *
  * @module dsh-restart
  */
 
 import { spawn, spawnSync } from 'node:child_process'
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { Socket } from 'node:net'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -87,6 +92,108 @@ const FAILURE_SIGNATURES = [
   'ReferenceError',
 ]
 
+/** Describe a pid as "name (command line)" for the log, tolerating failures. */
+function describeProcess(pid) {
+  try {
+    const name = spawnSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH', '/FO', 'CSV'], { encoding: 'utf8' })
+    const line = (name.stdout || '').split(/\r?\n/).find(entry => entry.trim() !== '') || ''
+    const image = /^"([^"]+)"/.exec(line)?.[1] || 'unknown'
+    const wmic = spawnSync('wmic', ['process', 'where', `ProcessId=${pid}`, 'get', 'CommandLine', '/value'], { encoding: 'utf8' })
+    const command = /CommandLine=(.+)/.exec(wmic.stdout || '')?.[1]?.trim() || ''
+    return command ? `${image} — ${clip(command, 120)}` : image
+  } catch {
+    return 'unknown'
+  }
+}
+
+/**
+ * Decide whether a pid is a DSH instance we may stop.
+ *
+ * Deliberately conservative: only a node process whose command line mentions
+ * this checkout's CLI or the dsh web entry point qualifies. Anything else — an
+ * editor, a database, an unrelated server — is never touched.
+ */
+function isDshProcess(pid) {
+  try {
+    const wmic = spawnSync('wmic', ['process', 'where', `ProcessId=${pid}`, 'get', 'CommandLine', '/value'], { encoding: 'utf8' })
+    const command = (/CommandLine=(.+)/.exec(wmic.stdout || '')?.[1] || '').toLowerCase()
+    if (command === '') return false
+    const looksLikeNode = command.includes('node')
+    const looksLikeDsh = command.includes('dsh')
+      || command.includes('apps\\cli\\src\\bin.ts')
+      || command.includes('apps/cli/src/bin.ts')
+      || command.includes('deepseek-harness')
+    return looksLikeNode && looksLikeDsh
+  } catch {
+    return false
+  }
+}
+
+/** Stop a process tree by pid. Returns true when it is gone afterwards. */
+async function stopProcess(pid) {
+  try {
+    // /T also ends children (pnpm spawns node), /F skips the prompt.
+    spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { encoding: 'utf8' })
+  } catch {
+    return false
+  }
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const alive = spawnSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH'], { encoding: 'utf8' })
+    if (!/^\s*\S/.test(alive.stdout || '') || /No tasks|not found/i.test(alive.stdout || '')) return true
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 500))
+  }
+  return false
+}
+
+/** Poll until the port stops answering, or the deadline passes. */
+async function waitForPortFree(port, timeoutSeconds) {
+  const deadline = Date.now() + timeoutSeconds * 1000
+  while (Date.now() < deadline) {
+    if (!(await portOpen(port))) return true
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 500))
+  }
+  return false
+}
+
+/**
+ * Poll a log file until it contains the authenticated application URL.
+ *
+ * `dsh web` mints a per-process launch token and prints the only URL that
+ * carries it. Without that URL the bare origin answers 401, which the UI shows
+ * as an empty history that cannot start a conversation — so recovering it is
+ * part of starting the server, not a nicety.
+ *
+ * @returns the `http://host:port/?token=...` URL, or undefined on timeout.
+ */
+async function waitForTokenUrl(logPath, timeoutSeconds) {
+  const pattern = /https?:\/\/[^\s"'`]*\/\?token=[A-Za-z0-9_-]+/
+  const deadline = Date.now() + timeoutSeconds * 1000
+  while (Date.now() < deadline) {
+    try {
+      const text = readFileSync(logPath, 'utf8')
+      const match = pattern.exec(text)
+      if (match) return match[0]
+    } catch { /* the file may not exist yet */ }
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 400))
+  }
+  return undefined
+}
+
+/** Newest modification time among a directory's entries, or 0 when unreadable. */
+function newestMtime(dir) {
+  try {
+    let newest = 0
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      const stat = statSync(full)
+      if (stat.mtimeMs > newest) newest = stat.mtimeMs
+    }
+    return newest
+  } catch {
+    return 0
+  }
+}
+
 /* ------------------------------------------------------------------ logging -- */
 
 let logFile = ''
@@ -109,10 +216,17 @@ function section(title) {
 
 /** Parse `--flag` / `--key value` arguments. */
 function parseArgs(argv) {
-  const flags = { build: true, ensure: true, start: true, dryRun: false, port: 3080, timeout: 180, via: 'local' }
+  const flags = { build: true, ensure: true, start: true, dryRun: false, port: 3080, timeout: 180, via: 'local', takePort: false, fast: false, background: false, open: true, url: false }
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index]
     switch (token) {
+      // Fast path: reuse the existing build and the existing plugin set, and
+      // take the port over from the previous instance. This is the daily
+      // launcher, so it must never rebuild or rewrite the profile.
+      case '--fast': flags.fast = true; flags.build = false; flags.ensure = false; flags.takePort = true; break
+      // Background: like fast, but the server is detached so it keeps running
+      // after the launcher window closes.
+      case '--background': flags.background = true; flags.fast = true; flags.build = false; flags.ensure = false; flags.takePort = true; break
       case '--no-build': flags.build = false; break
       case '--no-ensure': flags.ensure = false; break
       case '--no-start': flags.start = false; break
@@ -120,6 +234,9 @@ function parseArgs(argv) {
       case '--port': flags.port = Number(argv[++index]); break
       case '--timeout': flags.timeout = Number(argv[++index]); break
       case '--via': flags.via = argv[++index] === 'dsh' ? 'dsh' : 'local'; break
+      case '--take-port': flags.takePort = true; break
+      case '--no-open': flags.open = false; break
+      case '--url': flags.url = true; break
       default: break
     }
   }
@@ -576,6 +693,37 @@ async function main() {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   logFile = join(logDir, `restart-${stamp}.log`)
 
+  if (flags.url) {
+    // Recover the newest authenticated URL without touching the running server.
+    // Every start mints a fresh token, so the newest log that carries one wins.
+    const saved = join(logDir, 'last-url.txt')
+    let found
+    if (existsSync(saved)) found = readFileSync(saved, 'utf8').trim() || undefined
+    if (!found) {
+      const logs = readdirSync(logDir)
+        .filter(name => name.endsWith('.log'))
+        .map(name => ({ name, mtime: statSync(join(logDir, name)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime)
+      for (const entry of logs) {
+        try {
+          const match = /https?:\/\/[^\s"'`]*\/\?token=[A-Za-z0-9_-]+/.exec(readFileSync(join(logDir, entry.name), 'utf8'))
+          if (match) { found = match[0]; break }
+        } catch { /* keep looking */ }
+      }
+    }
+    if (found) {
+      process.stdout.write(found + '\n')
+      if (flags.open !== false) {
+        const opener = spawn('cmd', ['/c', 'start', '', found], { shell: false, detached: true, stdio: 'ignore' })
+        opener.unref()
+      }
+    } else {
+      process.stdout.write('未找到带 token 的 URL。请先运行一次启动（start/dsh-restart），再执行 --url。\n')
+      process.exitCode = 1
+    }
+    return
+  }
+
   say(`DSH restart — ${new Date().toISOString()}`)
   say(`日志文件 : ${logFile}`)
   say(`DSH 检出 : ${dshRoot}`)
@@ -632,6 +780,25 @@ async function main() {
       return
     }
     say('构建完成。')
+  } else {
+    // Skipping the build is only safe when there IS a build to start, so check
+    // for the web assets instead of assuming they exist.
+    section('使用已有构建（跳过构建）')
+    const distDir = join(dshRoot, 'apps', 'web', 'dist')
+    const indexHtml = join(distDir, 'index.html')
+    if (!existsSync(indexHtml)) {
+      say(`! 找不到已构建的前端产物：${indexHtml}`)
+      say('  请先不带 --fast 运行一次以完成构建，或先跑 build:official。')
+      process.exitCode = 1
+      return
+    }
+    const assets = join(distDir, 'assets')
+    const assetCount = existsSync(assets) ? readdirSync(assets).length : 0
+    say(`产物目录：${distDir}`)
+    say(`assets 文件数：${assetCount}`)
+    const newest = newestMtime(assets)
+    if (newest > 0) say(`最新产物时间：${new Date(newest).toLocaleString()}`)
+    if (flags.fast) say('快速启动模式：不重新构建、不改动插件集、自动接管端口。')
   }
 
   if (!flags.start) {
@@ -641,22 +808,125 @@ async function main() {
     return
   }
 
+  if (flags.background) {
+    // Background mode: launch DSH fully detached and return. The server keeps
+    // running after this launcher window closes, because the child is detached
+    // from this process's console and lifetime.
+    section('后台启动（detached）')
+    const distDirBg = join(dshRoot, 'apps', 'web', 'dist')
+    if (!existsSync(join(distDirBg, 'index.html'))) {
+      say(`! 找不到已构建产物：${join(distDirBg, 'index.html')}`)
+      say('  请先不带 --background 运行一次完成构建。')
+      process.exitCode = 1
+      return
+    }
+    if (flags.takePort) {
+      const existing = portOwner(flags.port)
+      if (existing !== 0) {
+        if (isDshProcess(existing)) {
+          say(`接管：停止旧实例 pid ${existing} ...`)
+          await stopProcess(existing)
+          await waitForPortFree(flags.port, 20)
+        } else {
+          say(`! 端口被非 DSH 进程 pid ${existing} 占用，不接管。`)
+          process.exitCode = 2
+          return
+        }
+      }
+    }
+    const bgLog = join(logDir, `background-${stamp}.log`)
+    say(`启动 DSH（stdout/stderr → ${bgLog}）...`)
+    // The server's output must reach a FILE, not /dev/null: `dsh web` prints the
+    // only authenticating URL (`/?token=...`) there, and each process mints a
+    // fresh token. Discarding stdout would leave the browser at a bare
+    // http://127.0.0.1:3080/ that answers 401 -- which looks exactly like
+    // "history is empty and no conversation can be started".
+    const bgOut = openSync(bgLog, 'a')
+    const bgChild = spawn('pnpm', ['dsh', 'web'], {
+      cwd: dshRoot,
+      shell: process.platform === 'win32',
+      env: process.env,
+      detached: true,
+      stdio: ['ignore', bgOut, bgOut],
+    })
+    bgChild.unref()
+    say(`已后台启动，pid ${bgChild.pid}；本窗口可关闭，DSH 继续运行。`)
+    say(`等待端口 ${flags.port} 就绪（最长 ${flags.timeout}s）...`)
+    const bgHealthy = await waitForPort(flags.port, flags.timeout)
+
+    // Recover the authenticated URL so the page actually loads data.
+    const tokenUrl = await waitForTokenUrl(bgLog, 15)
+    if (bgHealthy && tokenUrl) {
+      say(`DSH web 就绪：${tokenUrl}`)
+      try {
+        writeFileSync(join(logDir, 'last-url.txt'), tokenUrl + '\n', 'utf8')
+        say(`（已写入 ${join(logDir, 'last-url.txt')}，下次可直接使用）`)
+      } catch { /* the URL is still printed below */ }
+      if (flags.open !== false) {
+        say('正在打开浏览器 ...')
+        const opener = spawn('cmd', ['/c', 'start', '', tokenUrl], { shell: false, detached: true, stdio: 'ignore' })
+        opener.unref()
+      }
+    } else if (bgHealthy) {
+      say(`! 端口已就绪，但未在日志里找到带 token 的 URL。`)
+      say(`  请打开 ${bgLog}，找到 http://127.0.0.1:${flags.port}/?token=... 这一行并用它访问。`)
+      say(`  （直接用不带 token 的地址会返回 401，表现为历史空白、无法开对话。）`)
+    } else {
+      say(`! ${flags.timeout}s 内端口 ${flags.port} 未就绪；请查看 ${bgLog}`)
+    }
+    say(`日志：${logFile}`)
+    process.exitCode = bgHealthy && Boolean(tokenUrl) ? 0 : 1
+    return
+  }
+
   // Ladder: full set first, then progressively smaller sets.
   const ladder = [WANTED.length, 12, 6, 2, 0]
   for (let attempt = 0; attempt < ladder.length; attempt += 1) {
     const limit = ladder[attempt]
     section(`启动尝试 ${attempt + 1}/${ladder.length}（插件上限 ${limit === WANTED.length ? '全部' : limit}）`)
 
-    // A port held by someone else is not a plugin problem: degrading the set
-    // would change the profile for nothing and still fail. Stop and report.
+    // A port held by the previous instance is the normal case for a *restart*:
+    // stop it, then start fresh. Anything else on the port is left alone unless
+    // the caller explicitly asked to take it over.
     const owner = portOwner(flags.port)
-    if (owner !== 0) {
+    if (owner !== 0 && attempt === 0) {
+      const occupant = describeProcess(owner)
       section('端口已被占用')
-      say(`127.0.0.1:${flags.port} 已被 pid ${owner} 监听（很可能是你正在运行的 DSH）。`)
-      say('这不是插件冲突，因此不会降级插件集。请二选一：')
-      say(`  1) 直接使用已在运行的实例：http://127.0.0.1:${flags.port}/`)
-      say(`  2) 先自行停掉 pid ${owner}，再重新运行本脚本`)
-      say('  （监听端口由 profile 的 webserver 配置决定，本脚本无法代你改端口）')
+      say(`127.0.0.1:${flags.port} 已被 pid ${owner} 监听：${occupant}`)
+
+      if (!isDshProcess(owner)) {
+        say('这个进程看起来不是 DSH，脚本不会去动它。请二选一：')
+        say(`  1) 直接使用已在运行的实例：http://127.0.0.1:${flags.port}/`)
+        say(`  2) 确认可以停掉后，加 --take-port 让脚本接管该端口`)
+        say(`日志：${logFile}`)
+        process.exitCode = 2
+        return
+      }
+
+      if (flags.takePort) {
+        say(`这是上一次的 DSH 实例，正在停止 pid ${owner} ...`)
+        const stopped = await stopProcess(owner)
+        if (!stopped) {
+          say(`! 无法停止 pid ${owner}，中止。请手动结束它后重试。`)
+          say(`日志：${logFile}`)
+          process.exitCode = 2
+          return
+        }
+        const freed = await waitForPortFree(flags.port, 20)
+        say(freed ? '端口已释放，继续启动。' : '! 端口仍未释放，仍尝试启动。')
+      } else {
+        say('这是上一次的 DSH 实例。要重启请加 --take-port（或从桌面快捷方式运行，')
+        say('它会自动带上该参数）。也可以用 http://127.0.0.1:' + flags.port + '/ 直接使用现有实例。')
+        say(`日志：${logFile}`)
+        process.exitCode = 2
+        return
+      }
+    }
+
+    // Later attempts: if the port is somehow still held, do not degrade further.
+    const stillHeld = attempt > 0 ? portOwner(flags.port) : 0
+    if (stillHeld !== 0) {
+      say(`! 端口仍被 pid ${stillHeld} 占用，停止降级以避免无意义地改动 profile。`)
       say(`日志：${logFile}`)
       process.exitCode = 2
       return
@@ -694,9 +964,28 @@ async function main() {
 
     if (healthy && !exited) {
       section('启动成功')
-      say(`DSH web 已就绪：http://127.0.0.1:${flags.port}/`)
+      // The bare origin answers 401; only the token URL authenticates, and the
+      // token is regenerated on every launch. Surface it prominently instead of
+      // letting it scroll past as one line among the boot output.
+      const tokenUrl = await waitForTokenUrl(logFile, 15)
+      if (tokenUrl) {
+        try { writeFileSync(join(logDir, 'last-url.txt'), tokenUrl + '\n', 'utf8') } catch { /* shown below */ }
+        say('')
+        say('  请在浏览器打开这个带 token 的地址（直接开 / 会 401，表现为历史空白、无法开对话）：')
+        say('')
+        say(`    ${tokenUrl}`)
+        say('')
+        say('  （已保存到 logs/last-url.txt；认证 cookie 有效期 30 天）')
+      } else {
+        say(`! 未在日志里找到带 token 的 URL；请查看 ${logFile}`)
+        say(`  直接访问 http://127.0.0.1:${flags.port}/ 会返回 401。`)
+      }
       say(`本进程持有 DSH 子进程（pid ${child.pid}）——关闭此窗口即停止它。`)
       say(`日志：${logFile}`)
+      if (tokenUrl && flags.open !== false) {
+        const opener = spawn('cmd', ['/c', 'start', '', tokenUrl], { shell: false, detached: true, stdio: 'ignore' })
+        opener.unref()
+      }
       // Hand the terminal over to the running server.
       await new Promise(resolvePromise => {
         child.on('close', code => {
