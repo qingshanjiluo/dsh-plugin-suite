@@ -129,7 +129,37 @@ function isDshProcess(pid) {
   }
 }
 
-/** Stop a process tree by pid. Returns true when it is gone afterwards. */
+/**
+ * Walk the parent chain of the current process and report the pids on it.
+ *
+ * Used as a safety rail: taking over the port from an ancestor would tear down
+ * the very session running this script, so that case is refused, not executed.
+ */
+function ancestorPids() {
+  const chain = new Set()
+  try {
+    let pid = process.pid
+    for (let hop = 0; hop < 24; hop += 1) {
+      const query = spawnSync('wmic', ['process', 'where', `ProcessId=${pid}`, 'get', 'ParentProcessId', '/value'], { encoding: 'utf8' })
+      const parent = Number((/ParentProcessId=(\d+)/.exec(query.stdout || '')?.[1]) ?? 0)
+      if (!parent || chain.has(parent)) break
+      chain.add(parent)
+      pid = parent
+    }
+  } catch { /* an unreadable chain simply yields no ancestors */ }
+  return chain
+}
+
+/**
+ * Stop one DSH process tree by pid. Returns true when it is gone afterwards.
+ *
+ * `/T` is required here: `pnpm dsh web` expands into a deep chain
+ * (`cmd -> node -> python -> node -> cmd -> node -> python -> node`), and
+ * killing only the listening pid leaves the wrappers behind still holding the
+ * console. Note that `/T` walks *descendants*, never ancestors — so a launcher
+ * window that started this server is unaffected, and it is that window's own
+ * pnpm that reports `ELIFECYCLE ... exit code 1` if the tree dies underneath it.
+ */
 async function stopProcess(pid) {
   try {
     // /T also ends children (pnpm spawns node), /F skips the prompt.
@@ -823,6 +853,13 @@ async function main() {
     if (flags.takePort) {
       const existing = portOwner(flags.port)
       if (existing !== 0) {
+        if (ancestorPids().has(existing)) {
+          say(`! pid ${existing} 是当前进程的祖先（很可能就是正在承载本会话的实例）。`)
+          say('  接管它会连本会话一起中断，因此拒绝执行。')
+          say(`  若确实要重启，请先手动停掉它，或从其它终端运行本脚本。`)
+          process.exitCode = 2
+          return
+        }
         if (isDshProcess(existing)) {
           say(`接管：停止旧实例 pid ${existing} ...`)
           await stopProcess(existing)
@@ -904,6 +941,14 @@ async function main() {
       }
 
       if (flags.takePort) {
+        if (ancestorPids().has(owner)) {
+          say(`! pid ${owner} 是当前进程的祖先（很可能就是正在承载本会话的实例）。`)
+          say('  接管它会连本会话一起中断，因此拒绝执行。')
+          say(`  若确实要重启，请先手动停掉它，或从其它终端运行本脚本。`)
+          say(`日志：${logFile}`)
+          process.exitCode = 2
+          return
+        }
         say(`这是上一次的 DSH 实例，正在停止 pid ${owner} ...`)
         const stopped = await stopProcess(owner)
         if (!stopped) {

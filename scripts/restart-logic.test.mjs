@@ -43,6 +43,11 @@ assert.match(restartSource, /replace\(\/\\\\\/g, '\/'\)/, 'link spec uses forwar
 assert.match(restartSource, /new Socket\(\)/, 'readiness probe dials the port')
 assert.doesNotMatch(restartSource, /socket\.listen\(/, 'readiness probe never binds the port')
 
+// Taking over the port from an ancestor would tear down the session running
+// this script, so that case must be refused before any kill happens.
+assert.match(restartSource, /function ancestorPids\(/, 'ancestor walk present')
+assert.match(restartSource, /是当前进程的祖先/, 'ancestor takeover is refused')
+
 // Loader entry ids must not collide with official layers.
 const checkSource = readFileSync(new URL('../bin/dsh-check.mjs', import.meta.url), 'utf8')
 assert.match(checkSource, /function loaderIds\(/, 'loader id scan present')
